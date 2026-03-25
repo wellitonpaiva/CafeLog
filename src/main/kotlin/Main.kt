@@ -1,22 +1,18 @@
 package com.welliton
 
 import com.fasterxml.jackson.databind.SerializationFeature
-import io.ktor.http.HttpStatusCode.Companion.OK
-import io.ktor.serialization.jackson.jackson
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.html.respondHtml
-import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
-import kotlinx.html.body
-import kotlinx.html.h1
-import kotlinx.html.li
-import kotlinx.html.ul
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import io.ktor.http.*
+import io.ktor.serialization.jackson.*
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.html.*
+import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import kotlinx.html.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -34,10 +30,12 @@ data class Bag(
 
 interface BagData {
     fun fetchAll(): List<Bag>
+    fun add(bag: Bag): Boolean
 }
 
-class MemoryBagData(val bags: List<Bag> = emptyList()): BagData {
-    override fun fetchAll(): List<Bag> = bags
+class MemoryBagData(val bags: MutableList<Bag> = mutableListOf()): BagData {
+    override fun fetchAll() = bags
+    override fun add(bag: Bag) = bags.add(bag)
 
 }
 
@@ -51,6 +49,7 @@ fun Application.module(bagData: BagData) {
     install(ContentNegotiation) {
         jackson {
             enable(SerializationFeature.INDENT_OUTPUT)
+            registerModule(JavaTimeModule())
         }
     }
     configureRouting(bagData)
@@ -70,7 +69,105 @@ fun Application.configureRouting(bagData: BagData) {
                 }
             }
         }
-
+        get("/addBag") {
+            call.respondHtml {
+                body {
+                    h1 { +"CafeLog - Add Bag" }
+                    form {
+                        id = "addBagForm"
+                        label { +"Name: " }
+                        input(type = InputType.text) {
+                            name = "name"
+                            required = true
+                        }
+                        label { +"Country: " }
+                        input(type = InputType.text) {
+                            name = "country"
+                            required = true
+                        }
+                        label { +"Varietal (comma-separated): " }
+                        input(type = InputType.text) {
+                            name = "varietal"
+                            placeholder = "e.g. Bourbon, Typica"
+                        }
+                        label { +"Process (comma-separated): " }
+                        input(type = InputType.text) {
+                            name = "process"
+                            placeholder = "e.g. Washed, Natural"
+                        }
+                        label { +"Altitude (meters): " }
+                        input(type = InputType.number) {
+                            name = "altitude"
+                            required = true
+                        }
+                        label { +"Score (1-100): " }
+                        input(type = InputType.number) {
+                            name = "score"
+                            required = true
+                        }
+                        label { +"Notes (comma-separated): " }
+                        input(type = InputType.text) {
+                            name = "notes"
+                            placeholder = "e.g. Fruity, Balanced"
+                        }
+                        label { +"Roaster: " }
+                        input(type = InputType.text) {
+                            name = "roaster"
+                            required = true
+                        }
+                        input(type = InputType.submit) {
+                            value = "Add Bag"
+                        }
+                    }
+                    script {
+                        unsafe {
+                            raw("""
+                                document.getElementById('addBagForm').addEventListener('submit', async (e) => {
+                                    e.preventDefault();
+                                    
+                                    const formData = new FormData(e.target);
+                                    const bag = {
+                                        name: formData.get('name'),
+                                        country: formData.get('country'),
+                                        varietal: formData.get('varietal') ? formData.get('varietal').split(',').map(v => v.trim()) : [],
+                                        process: formData.get('process') ? formData.get('process').split(',').map(p => p.trim()) : [],
+                                        altitude: parseFloat(formData.get('altitude')),
+                                        score: parseFloat(formData.get('score')),
+                                        notes: formData.get('notes') ? formData.get('notes').split(',').map(n => n.trim()) : [],
+                                        roaster: formData.get('roaster'),
+                                        date: new Date().toISOString()
+                                    };
+                                    
+                                    try {
+                                        const response = await fetch('/bag', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify(bag)
+                                        });
+                                        
+                                        if (response.ok) {
+                                            alert('Bag added successfully!');
+                                            window.location.href = '/';
+                                        } else {
+                                            alert('Error adding bag: ' + response.statusText);
+                                        }
+                                    } catch (error) {
+                                        alert('Error: ' + error.message);
+                                    }
+                                });
+                            """.trimIndent())
+                        }
+                    }
+                }
+            }
+        }
+        post("/bag") {
+            val bag = call.receive<Bag>()
+            bagData.add(bag)
+            call.respond(HttpStatusCode.Created, bag)
+        }
     }
 }
 
