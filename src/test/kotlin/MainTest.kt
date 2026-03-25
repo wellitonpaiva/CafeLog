@@ -1,3 +1,4 @@
+import com.welliton.MemoryBagData
 import com.welliton.module
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -12,11 +13,20 @@ class MainTest {
     @Test
     fun testRoot() = testApplication {
         application {
-            module()
+            module(MemoryBagData() )
         }
         val response = client.get("/")
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals("Hello World!", response.bodyAsText())
     }
 
+    @Test
+    fun `return empty when no bags found`() = testApplication {
+        application {
+            module(MemoryBagData())
+        }
+        val response = client.get("/bags")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals("[ ]", response.bodyAsText())
+    }
 }

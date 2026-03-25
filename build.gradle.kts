@@ -13,6 +13,8 @@ repositories {
 dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.serialization.jackson)
+    implementation(libs.ktor.server.content.negotiation)
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.core)
     testImplementation(libs.ktor.server.test.host)
