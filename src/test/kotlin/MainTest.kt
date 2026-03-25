@@ -11,22 +11,15 @@ import kotlin.test.assertEquals
 class MainTest {
 
     @Test
-    fun testRoot() = testApplication {
-        application {
-            module(MemoryBagData() )
-        }
-        val response = client.get("/")
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("Hello World!", response.bodyAsText())
-    }
-
-    @Test
     fun `return empty when no bags found`() = testApplication {
         application {
             module(MemoryBagData())
         }
-        val response = client.get("/bags")
+        val response = client.get("/")
         assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("[ ]", response.bodyAsText())
+        assertEquals(resource("main.html"), response.bodyAsText())
     }
 }
+
+private fun resource(name: String): String =
+    {}.javaClass.getResourceAsStream(name)!!.readAllBytes().toString(Charsets.UTF_8)
