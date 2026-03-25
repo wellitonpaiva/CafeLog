@@ -7,6 +7,7 @@ import io.ktor.serialization.jackson.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.html.*
+import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
@@ -57,8 +58,15 @@ fun Application.module(bagData: BagData) {
 
 fun Application.configureRouting(bagData: BagData) {
     routing {
+        staticResources("/", "static")
         get("/") {
             call.respondHtml {
+                head {
+                    link {
+                        href = "https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css"
+                        rel = "stylesheet"
+                    }
+                }
                 body {
                     h1 { +"CafeLog" }
                     ul {
@@ -71,6 +79,12 @@ fun Application.configureRouting(bagData: BagData) {
         }
         get("/addBag") {
             call.respondHtml {
+                head {
+                    link {
+                        href = "https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css"
+                        rel = "stylesheet"
+                    }
+                }
                 body {
                     h1 { +"CafeLog - Add Bag" }
                     form {
@@ -120,45 +134,8 @@ fun Application.configureRouting(bagData: BagData) {
                         }
                     }
                     script {
-                        unsafe {
-                            raw("""
-                                document.getElementById('addBagForm').addEventListener('submit', async (e) => {
-                                    e.preventDefault();
-                                    
-                                    const formData = new FormData(e.target);
-                                    const bag = {
-                                        name: formData.get('name'),
-                                        country: formData.get('country'),
-                                        varietal: formData.get('varietal') ? formData.get('varietal').split(',').map(v => v.trim()) : [],
-                                        process: formData.get('process') ? formData.get('process').split(',').map(p => p.trim()) : [],
-                                        altitude: parseFloat(formData.get('altitude')),
-                                        score: parseFloat(formData.get('score')),
-                                        notes: formData.get('notes') ? formData.get('notes').split(',').map(n => n.trim()) : [],
-                                        roaster: formData.get('roaster'),
-                                        date: new Date().toISOString()
-                                    };
-                                    
-                                    try {
-                                        const response = await fetch('/bag', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json'
-                                            },
-                                            body: JSON.stringify(bag)
-                                        });
-                                        
-                                        if (response.ok) {
-                                            alert('Bag added successfully!');
-                                            window.location.href = '/';
-                                        } else {
-                                            alert('Error adding bag: ' + response.statusText);
-                                        }
-                                    } catch (error) {
-                                        alert('Error: ' + error.message);
-                                    }
-                                });
-                            """.trimIndent())
-                        }
+                        type = ScriptType.textJavaScript
+                        src = "/add.js"
                     }
                 }
             }
