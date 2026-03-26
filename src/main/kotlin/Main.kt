@@ -1,10 +1,9 @@
 package com.welliton
 
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.ktor.http.*
-import io.ktor.serialization.jackson.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.authenticate
 import io.ktor.server.engine.*
 import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
@@ -12,8 +11,12 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import java.time.LocalDateTime
+import io.ktor.server.sessions.*
+import kotlinx.datetime.LocalDateTime
+import kotlinx.serialization.Serializable
 
+
+@Serializable
 data class Bag(
     val name: String,
     val country: String,
@@ -44,11 +47,12 @@ fun main() {
 }
 
 fun Application.module(bagData: BagData) {
+    install(Sessions) {
+        cookie<UserSession>("user_session")
+    }
+    configureSecurity()
     install(ContentNegotiation) {
-        jackson {
-            enable(SerializationFeature.INDENT_OUTPUT)
-            registerModule(JavaTimeModule())
-        }
+        json()
     }
     configureRouting(bagData)
 }
@@ -56,12 +60,14 @@ fun Application.module(bagData: BagData) {
 fun Application.configureRouting(bagData: BagData) {
     routing {
         staticResources("/", "static")
-        main(bagData)
-        addBag()
         post("/bag") {
             val bag = call.receive<Bag>()
             bagData.add(bag)
             call.respond(HttpStatusCode.Created, bag)
+        }
+        authenticate("auth-oauth-google") {
+            main(bagData)
+            addBag()
         }
     }
 }

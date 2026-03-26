@@ -4,20 +4,22 @@ import io.ktor.http.*
 import io.ktor.server.html.*
 import io.ktor.server.routing.*
 import kotlinx.html.*
-import java.time.format.DateTimeFormatter
 
 fun Routing.main(bagData: BagData) {
     get("/") {
-        call.respondHtml(
-            HttpStatusCode.OK,
-            page("CafeLog") {
-                ul {
-                    bagData.fetchAll().forEach { bag ->
-                        li { +"[${DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(bag.date)}] ${bag.name}" }
+        val userSession: UserSession? = getSession(call)
+        if (userSession != null) {
+            call.respondHtml(
+                HttpStatusCode.OK,
+                page("CafeLog") {
+                    ul {
+                        bagData.fetchAll().forEach { bag ->
+                            li { +"[${bag.date}] ${bag.name}" }
+                        }
                     }
                 }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -90,5 +92,6 @@ fun page(header: String, content: BODY.() -> Unit): HTML.() -> Unit = {
     }
     body {
         h1 { +header }
-        content() }
+        content()
+    }
 }
