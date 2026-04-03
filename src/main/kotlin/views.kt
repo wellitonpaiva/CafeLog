@@ -9,9 +9,10 @@ fun Routing.main(bagData: BagData) {
     get("/") {
         val userSession: UserSession? = getSession(call)
         if (userSession != null) {
+            val userInfo: UserInfo = getPersonalGreeting(httpClient, userSession)
             call.respondHtml(
                 HttpStatusCode.OK,
-                page("CafeLog") {
+                page("CafeLog - ${userInfo.givenName}'s Coffee Bags") {
                     ul {
                         bagData.fetchAll().forEach { bag ->
                             li { +"[${bag.date}] ${bag.name}" }

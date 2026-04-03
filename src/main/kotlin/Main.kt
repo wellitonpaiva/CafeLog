@@ -1,18 +1,19 @@
 package com.welliton
 
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
 import io.ktor.server.engine.*
 import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.serializers.LocalDateTimeIso8601Serializer
 import kotlinx.serialization.Serializable
 
 
@@ -26,6 +27,7 @@ data class Bag(
     val score: Float,
     val notes: List<String>,
     val roaster: String,
+    @Serializable(with = LocalDateTimeIso8601Serializer::class)
     val date: LocalDateTime
 )
 
@@ -60,12 +62,12 @@ fun Application.module(bagData: BagData) {
 fun Application.configureRouting(bagData: BagData) {
     routing {
         staticResources("/", "static")
-        post("/bag") {
-            val bag = call.receive<Bag>()
-            bagData.add(bag)
-            call.respond(HttpStatusCode.Created, bag)
-        }
         authenticate("auth-oauth-google") {
+            post("/bag") {
+                val bag = call.receive<Bag>()
+                bagData.add(bag)
+                call.respond(HttpStatusCode.Created, bag)
+            }
             main(bagData)
             addBag()
         }

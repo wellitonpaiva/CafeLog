@@ -2,11 +2,10 @@ package com.welliton
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.apache.*
+import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.get
+import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.http.headers
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -14,14 +13,17 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+val httpClient = HttpClient(CIO) {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true })
+    }
+}
 
 fun Application.configureSecurity() {
-    val httpClient = HttpClient(Apache) {
-        install(ContentNegotiation) {
-            json()
-        }
-    }
     authentication {
         oauth("auth-oauth-google") {
             urlProvider = { "http://localhost:8080/callback" }
@@ -29,11 +31,11 @@ fun Application.configureSecurity() {
                 OAuthServerSettings.OAuth2ServerSettings(
                     name = "google",
                     authorizeUrl = "https://accounts.google.com/o/oauth2/auth",
-                    accessTokenUrl = "https://accounts.google.com/o/oauth2/token",
+                    accessTokenUrl = "https://oauth2.googleapis.com/token",
                     requestMethod = HttpMethod.Post,
                     clientId = System.getenv("GOOGLE_CLIENT_ID"),
                     clientSecret = System.getenv("GOOGLE_CLIENT_SECRET"),
-                    defaultScopes = listOf("https://www.googleapis.com/auth/userinfo.profile")
+                    defaultScopes = listOf("https://www.googleapis.com/auth/userinfo.profile"),
                 )
             }
             client = httpClient
@@ -69,7 +71,6 @@ suspend fun getSession(
 ): UserSession? {
 
     val userSession: UserSession? = call.sessions.get()
-    //if there is no session, redirect to login
     if (userSession == null) {
         val redirectUrl = URLBuilder("http://localhost:8080/login").run {
             parameters.append("redirectUrl", call.request.uri)
@@ -83,17 +84,11 @@ suspend fun getSession(
 
 @Serializable
 data class UserInfo(
-    val id: String,
     val name: String,
-    val givenName: String,
-    val picture: String,
+    @SerialName("given_name")
+    val givenName: String? = null,
+    val picture: String? = null,
 )
 
-private suspend fun getPersonalGreeting(
-    httpClient: HttpClient,
-    userSession: UserSession
-): UserInfo = httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo") {
-    headers {
-        append(HttpHeaders.Authorization, "Bearer $userSession")
-    }
-}.body()
+suspend fun getPersonalGreeting(httpClient: HttpClient, userSession: UserSession): UserInfo =
+    httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=${userSession.accessToken}").body()
