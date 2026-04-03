@@ -10,6 +10,3 @@ class MainTest {
 
     }
 }
-
-private fun resource(name: String): String =
-    {}.javaClass.getResourceAsStream(name)!!.readAllBytes().toString(Charsets.UTF_8)
