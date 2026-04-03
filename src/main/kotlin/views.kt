@@ -12,8 +12,8 @@ fun Routing.main(bagData: BagData) {
                 HttpStatusCode.OK,
                 page(user, "Coffee Bags") {
                     ul {
-                        bagData.fetchAll().forEach { bag ->
-                            li { +"[${bag.date}] ${bag.name}" }
+                        bagData.fetchAll(user.id).forEach { bag ->
+                            li { +"[${bag.formattedDate()}] ${bag.name}" }
                         }
                     }
                 }
@@ -83,7 +83,7 @@ fun Routing.addBag() {
 }
 
 
-fun page(userInfo: UserInfo, header: String, content: BODY.() -> Unit): HTML.() -> Unit = {
+fun page(user: User, header: String, content: BODY.() -> Unit): HTML.() -> Unit = {
     head {
         title { +"Beans " }
         link {
@@ -93,7 +93,7 @@ fun page(userInfo: UserInfo, header: String, content: BODY.() -> Unit): HTML.() 
         }
     }
     body {
-        h1 { + "${userInfo.givenName}'s Log" }
+        h1 { + "${user.givenName}'s Log" }
         h2 { +header }
         content()
     }

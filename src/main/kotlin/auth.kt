@@ -10,10 +10,9 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-fun Application.configureSecurity(httpClient: HttpClient) {
+fun Application.configureSecurity(httpClient: HttpClient, userData: UserData, appConfig: AppConfig) {
     authentication {
         oauth("auth-oauth-google") {
             urlProvider = { "http://localhost:8080/callback" }
@@ -23,8 +22,8 @@ fun Application.configureSecurity(httpClient: HttpClient) {
                     authorizeUrl = "https://accounts.google.com/o/oauth2/auth",
                     accessTokenUrl = "https://oauth2.googleapis.com/token",
                     requestMethod = HttpMethod.Post,
-                    clientId = System.getenv("GOOGLE_CLIENT_ID"),
-                    clientSecret = System.getenv("GOOGLE_CLIENT_SECRET"),
+                    clientId = appConfig.clientId,
+                    clientSecret = appConfig.clientSecret,
                     defaultScopes = listOf("https://www.googleapis.com/auth/userinfo.profile"),
                 )
             }
@@ -39,7 +38,12 @@ fun Application.configureSecurity(httpClient: HttpClient) {
 
             get("/callback") {
                 val principal: OAuthAccessTokenResponse.OAuth2? = call.authentication.principal()
-                call.sessions.set(fetchUserInfo(httpClient, UserSession(principal?.accessToken.toString())))
+                val userInfo = fetchUserInfo(httpClient, UserSession(principal?.accessToken.toString()))
+                val user = userData.fetchUser(userInfo.id)
+                if(user == null) {
+                    userData.addUser(userInfo)
+                }
+                call.sessions.set(userInfo)
                 call.respondRedirect("/")
             }
         }
@@ -49,21 +53,12 @@ fun Application.configureSecurity(httpClient: HttpClient) {
 @Serializable
 data class UserSession(val accessToken: String)
 
-suspend fun ApplicationCall.requireUser(): UserInfo? =
-    sessions.get<UserInfo>().also { userSession ->
+suspend fun ApplicationCall.requireUser(): User? =
+    sessions.get<User>().also { userSession ->
         if (userSession == null) {
             respondRedirect("http://localhost:8080/login?redirectUrl=${request.uri}")
         }
     }
 
-@Serializable
-data class UserInfo(
-    val id: String,
-    val name: String,
-    @SerialName("given_name")
-    val givenName: String? = null,
-    val picture: String? = null,
-)
-
-suspend fun fetchUserInfo(httpClient: HttpClient, userSession: UserSession): UserInfo =
+suspend fun fetchUserInfo(httpClient: HttpClient, userSession: UserSession): User =
     httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=${userSession.accessToken}").body()
