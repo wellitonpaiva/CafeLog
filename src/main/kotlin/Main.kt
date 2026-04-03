@@ -1,5 +1,7 @@
 package com.welliton
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
@@ -12,47 +14,24 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.serializers.LocalDateTimeIso8601Serializer
-import kotlinx.serialization.Serializable
-
-
-@Serializable
-data class Bag(
-    val name: String,
-    val country: String,
-    val varietal: List<String>,
-    val process: List<String>,
-    val altitude: Double,
-    val score: Float,
-    val notes: List<String>,
-    val roaster: String,
-    @Serializable(with = LocalDateTimeIso8601Serializer::class)
-    val date: LocalDateTime
-)
-
-interface BagData {
-    fun fetchAll(): List<Bag>
-    fun add(bag: Bag): Boolean
-}
-
-class MemoryBagData(val bags: MutableList<Bag> = mutableListOf()) : BagData {
-    override fun fetchAll() = bags
-    override fun add(bag: Bag) = bags.add(bag)
-
-}
+import kotlinx.serialization.json.Json
 
 fun main() {
     val bagData = MemoryBagData()
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = { module(bagData) })
+    val httpClient = HttpClient(CIO) {
+        install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+    }
+    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = { module(bagData, httpClient) })
         .start(wait = true)
 }
 
-fun Application.module(bagData: BagData) {
+fun Application.module(bagData: BagData, httpClient: HttpClient) {
     install(Sessions) {
-        cookie<UserSession>("user_session")
+        cookie<UserInfo>("user")
     }
-    configureSecurity()
+    configureSecurity(httpClient)
     install(ContentNegotiation) {
         json()
     }

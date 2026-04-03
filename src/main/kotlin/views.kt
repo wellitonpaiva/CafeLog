@@ -7,12 +7,10 @@ import kotlinx.html.*
 
 fun Routing.main(bagData: BagData) {
     get("/") {
-        val userSession: UserSession? = getSession(call)
-        if (userSession != null) {
-            val userInfo: UserInfo = getPersonalGreeting(httpClient, userSession)
+        getSession(call)?.let {user ->
             call.respondHtml(
                 HttpStatusCode.OK,
-                page("CafeLog - ${userInfo.givenName}'s Coffee Bags") {
+                page("CafeLog - ${user.givenName}'s Coffee Bags") {
                     ul {
                         bagData.fetchAll().forEach { bag ->
                             li { +"[${bag.date}] ${bag.name}" }
