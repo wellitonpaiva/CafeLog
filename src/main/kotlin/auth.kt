@@ -49,13 +49,12 @@ fun Application.configureSecurity(httpClient: HttpClient) {
 @Serializable
 data class UserSession(val accessToken: String)
 
-suspend fun getSession(call: ApplicationCall): UserInfo? {
-    val userSession: UserInfo? = call.sessions.get()
-    if (userSession == null) {
-        call.respondRedirect("http://localhost:8080/login?redirectUrl=${call.request.uri}")
+suspend fun ApplicationCall.requireUser(): UserInfo? =
+    sessions.get<UserInfo>().also { userSession ->
+        if (userSession == null) {
+            respondRedirect("http://localhost:8080/login?redirectUrl=${request.uri}")
+        }
     }
-    return userSession
-}
 
 @Serializable
 data class UserInfo(
