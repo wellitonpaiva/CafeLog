@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
     alias(libs.plugins.kotlin.plugin.serialization)
+    application
 }
 
 group = "com.welliton"
@@ -37,9 +38,13 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(21)
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+application {
+    mainClass.set("com.welliton.MainKt")
 }
