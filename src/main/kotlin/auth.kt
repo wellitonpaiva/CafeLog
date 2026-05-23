@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 fun Application.configureSecurity(httpClient: HttpClient, userData: UserData, appConfig: AppConfig) {
     authentication {
         oauth("auth-oauth-google") {
-            urlProvider = { "http://localhost:8080/callback" }
+            urlProvider = { "https://cafelog-946003361214.europe-west1.run.app/callback" }
             providerLookup = {
                 OAuthServerSettings.OAuth2ServerSettings(
                     name = "google",
@@ -56,7 +56,7 @@ data class UserSession(val accessToken: String)
 suspend fun ApplicationCall.requireUser(): User? =
     sessions.get<User>().also { userSession ->
         if (userSession == null) {
-            respondRedirect("http://localhost:8080/login?redirectUrl=${request.uri}")
+            respondRedirect("https://cafelog-946003361214.europe-west1.run.app/login?redirectUrl=${request.uri}")
         }
     }
 
